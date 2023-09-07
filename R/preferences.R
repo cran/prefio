@@ -73,12 +73,12 @@
 #' integer-valued indices in place of item names, the `item_names` character
 #' vector should be in the correct order.
 #' @param aggregate If `TRUE`, aggregate the preferences via
-#' `\link{aggregate.preferences}` before returning. This returns a
-#' `\link{aggregated_preferences}` object.
+#' [`aggregate.preferences`][aggregate.preferences] before returning. This
+#' returns an [`aggregated_preferences`][aggregate.preferences] object.
 #' @param frequencies An optional integer vector containing the number of
 #' occurences of each preference. If provided, the method will return a
-#' `\link{aggregated_preferences}` object with the corresponding
-#' frequencies.
+#' [`aggregated_preferences`][aggregate.preferences] object with the
+#' corresponding frequencies.
 #' @param verbose If `TRUE`, diagnostic messages will be sent to stdout.
 #' @param ... Unused.
 #'
@@ -217,7 +217,7 @@ preferences <- function(data,
       verbose = verbose
     )
   } else if (fmt == "ordering") {
-    ranking <- ordering_to_ranking(data, NULL, verbose)
+    ranking <- ordering_to_ranking(data, item_names, verbose)
     prefs <- as.preferences.matrix(ranking,
       format = "ranking",
       ...,
@@ -379,6 +379,15 @@ long_to_ranking <- function(data,
                             rank,
                             item_names = NULL,
                             verbose = TRUE) {
+  if (dim(data)[1L] == 0L) {
+    return(
+      matrix(
+        ncol = length(item_names),
+        nrow = 0L,
+        dimnames = list(NULL, item_names)
+      )
+    )
+  }
   # Take only required columns
   data <- as.data.frame(data[, c(id, item, rank)])
   colnames(data) <- c("id", "item", "rank")
@@ -746,7 +755,11 @@ as.preferences.matrix <- function(x,
       verbose
     )
   } else if (format == "ranking") {
-    prefs <- t(apply(x, 1L, dplyr::dense_rank))
+    if (all(dim(x) > 0L)) {
+      prefs <- t(apply(x, 1L, dplyr::dense_rank))
+    } else {
+      prefs <- x
+    }
     colnames(prefs) <- item_names
   } else {
     stop("Not implemented.")
@@ -794,7 +807,11 @@ is.na.preferences <- function(x) {
 #' @method print preferences
 #' @export
 print.preferences <- function(x, ...) {
-  print.default(format(x, ...))
+  if (length(x) == 0L) {
+    cat("preferences(0)\n")
+  } else {
+    print.default(format(x, ...), quote = FALSE)
+  }
 }
 
 #' @method format preferences
@@ -817,9 +834,9 @@ format.preferences <- function(x, width = 40L, ...) {
   }
   value <- apply(x, 1L, f, items = attr(x, "item_names"))
   nc <- nchar(value)
-  trunc <- !is.na(nc) & nc > width
-  value[trunc] <- paste(strtrim(value[trunc], width - 4L), "...")
-  value
+  trunc <- !is.na(nc) & nc > (width - 2L)
+  value[trunc] <- paste(strtrim(value[trunc], width - 6L), "...")
+  paste0("[", value, "]")
 }
 
 #' @method rbind preferences

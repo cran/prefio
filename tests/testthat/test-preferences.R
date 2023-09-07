@@ -137,11 +137,14 @@ test_that("Equality and inequality work for `preferences`", {
 
 test_that("`print.preference` formats correctly", {
   prefs <- preferences(rankings, format = "ranking")
-  expect_output(print(prefs), "A > B > C")
-  expect_output(print(prefs), "C > B > A")
-  expect_output(print(prefs), "B > A > C")
-  expect_output(print(prefs[, 1]), '"A" "A" "A"')
-  expect_output(print(prefs[, NULL]), '"blank" "blank" "blank"')
+  expect_output(print(prefs), "\\[A > B > C\\]")
+  expect_output(print(prefs), "\\[C > B > A\\]")
+  expect_output(print(prefs), "\\[B > A > C\\]")
+  expect_output(print(prefs[, 1]), "\\[A\\] \\[A\\] \\[A\\]")
+  expect_output(
+    print(prefs[, NULL]),
+    "\\[blank\\] \\[blank\\] \\[blank\\]"
+  )
 })
 
 test_that("Some valid examples of `preferences` are not `na`", {
@@ -263,4 +266,51 @@ test_that("preferences from long format without id item or rank throws error", {
   expect_error(
     preferences(long, format = "long", rank = "rank", id = "id")
   )
+})
+
+test_that("Empty preferences can be created by `preferences`", {
+  expect_success({
+    prefs <- preferences(
+      matrix(ncol = 4, nrow = 0),
+      format = "ranking",
+      item_names = LETTERS[1:4]
+    )
+    expect_true(length(prefs) == 0)
+  })
+  expect_success({
+    prefs <- preferences(
+      matrix(ncol = 3, nrow = 0, dimnames = list(NULL, c("id", "itm", "rnk"))),
+      format = "long",
+      id = "id",
+      item = "itm",
+      rank = "rnk",
+      item_names = LETTERS[1:4]
+    )
+    expect_true(length(prefs) == 0)
+  })
+})
+
+test_that("Formatting of empty preferences object shows `preferences(0)`", {
+  prefs <- preferences(
+    matrix(ncol = 4, nrow = 0, dimnames = list(NULL, LETTERS[1:4])),
+    format = "ranking"
+  )
+  expect_output(print(prefs), "preferences\\(0\\)")
+})
+
+e <- character()
+test_that("Constructing preferences from orderings with index and name works", {
+  prefs <- preferences(
+    as.data.frame(
+      rbind(
+        list("A", "B", e),
+        list(1, 2, e)
+      )
+    ),
+    format = "ordering",
+    item_names = c("A", "B")
+  )
+  # Both rows are evaluated to be equal and then aggregated to one entry with
+  # frequency 2
+  expect_true(aggregate(prefs)$frequencies == 2)
 })
